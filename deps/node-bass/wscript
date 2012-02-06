@@ -1,0 +1,23 @@
+import os;
+
+srcdir = '.'
+blddir = 'build'
+VERSION = '0.0.1'
+
+libbasspath = os.environ['NODE_BASS_LIB_PATH']
+
+def set_options(opt):
+	opt.tool_options('compiler_cxx')
+
+def configure(conf):
+	conf.check_tool('compiler_cxx')
+	conf.check_tool('node_addon')
+	conf.check(lib='bass', libpath=[libbasspath], uselib_store='BASS')
+
+def build(bld):
+	obj = bld.new_task_gen('cxx', 'shlib', 'node_addon')
+	obj.includes = '../node-v0.6.10/src ../bass'
+	obj.cxxflags = ['-Wall', '-Werror']
+	obj.target = 'bass'
+	obj.source = ['bass.cc']
+	obj.uselib = 'BASS'

@@ -1,0 +1,4 @@
+#!/bin/sh
+export NODE_PATH=../node-v0.6.10/include/node/
+export NODE_BASS_LIB_PATH=`pwd`"/../bass"
+node-waf configure build
