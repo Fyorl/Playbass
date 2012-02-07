@@ -1,6 +1,6 @@
-# project noname (0.0.1) configured on Mon Feb  6 20:20:02 2012 by
+# project noname (0.0.1) configured on Wed Feb  8 02:42:47 2012 by
 # waf 1.5.16 (abi 7, python 20702f0 on linux2)
-# using /home/kim/local/node/bin/node-waf -vvv configure build
+# using ../node-v0.6.10/bin/node-waf configure build
 #
 
 ----------------------------------------
@@ -33,7 +33,7 @@ ok ../node-v0.6.10/include/node/
 
 ----------------------------------------
 Checking for node prefix 
-ok /home/kim/local/node
+ok /home/kim/projects/playbass/deps/node-v0.6.10
 
 ----------------------------------------
 Checking for library bass
