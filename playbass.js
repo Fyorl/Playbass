@@ -29,6 +29,7 @@ function ms_to_time (ms) {
 	var s = Math.floor(ms / 1000);
 	ms -= s * 1000;
 	var m = Math.floor(s / 60);
+	s -= m * 60;
 	
 	if (m < 10) m = '0' + m;
 	if (s < 10) s = '0' + s;
