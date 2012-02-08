@@ -1,1 +1,5 @@
-TODO
+SPACE: Pause/Play
+ESC: Quit
+R: Reset
+LEFT/RIGHT: Skip back or forward 1 second.
+UP/DOWN: Skip back or forward 5 seconds.
