@@ -17,7 +17,7 @@ int main () {
 		return 1;
 	}
 	
-	HRECORD record = BASS_RecordStart(14000, 1, BASS_SAMPLE_8BITS, NULL, 0);
+	HRECORD record = BASS_RecordStart(14000, 2, BASS_SAMPLE_8BITS, NULL, 0);
 	if (!record) {
 		printf("%d\n", BASS_ErrorGetCode());
 		return 1;

@@ -1,3 +1,12 @@
 #!/bin/sh
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:deps/bass
+kernel=`uname -r`
+arch=`expr match "$kernel" '64$'`
+
+if [ -z "$arch" ]; then
+	arch="32-bit"
+else
+	arch="64-bit"
+fi
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:deps/bass/$arch
 deps/node-v0.6.10/bin/node playbass.js
