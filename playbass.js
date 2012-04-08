@@ -5,13 +5,18 @@ var ncurses = require('./deps/node_modules/ncurses');
 // Native javascript libraries
 var FileSelector = require('./lib/FileSelector.js');
 var TabWriter = require('./lib/TabWriter.js');
+var Tuner = require('./lib/Tuner.js');
 
 // Node libraries
 var util = require('util');
+var fs = require('fs');
 
 var TICK_INTERVAL = 50;
 var FFW_INTERVAL = 1000;
 var current_tick = 0;
+
+var NOTES = JSON.parse(fs.readFileSync('assets/notes.json', 'utf8'));
+var FIFTH = JSON.parse(fs.readFileSync('assets/fifths.json', 'utf8'));
 
 process.on('uncaughtException', function (err) {
 	ncurses.cleanup();
@@ -43,6 +48,7 @@ function ms_to_time (ms) {
 function main () {
 	var stdwin = new ncurses.Window();
 	var selector = new FileSelector.Selector();
+	var tuner = new Tuner.Tuner();
 	var stream;
 	var tab = null;
 	var interval = null;
@@ -152,7 +158,11 @@ function main () {
 		);
 	});
 	
-	selector.select('Choose a song', 'assets/songs', stdwin);
+	tuner.on('tuned', function () {
+		selector.select('Choose a song', 'assets/songs', stdwin);
+	});
+	
+	tuner.init(stdwin, TICK_INTERVAL, NOTES, FIFTH);
 }
 
 main();

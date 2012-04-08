@@ -1,6 +1,10 @@
 #define BUILDING_NODE_EXTENSION
 #include <bass.h>
 #include <node.h>
+#include <math.h>
+#include <string.h>
+
+#define FREQ 14000
 
 using namespace v8;
 
@@ -50,6 +54,92 @@ Handle<Value> bass_stream_time (const Arguments& args) {
 	double secs = BASS_ChannelBytes2Seconds(stream, bytes);
 	
 	return scope.Close(Number::New(secs));
+}
+
+Handle<Value> bass_record_start (const Arguments& args) {
+	HandleScope scope;
+	
+	HRECORD record = args.This()->GetInternalField(0)->Uint32Value();
+	if(!BASS_ChannelPlay(record, TRUE)) {
+		return scope.Close(Boolean::New(FALSE));
+	}
+	
+	return scope.Close(Boolean::New(TRUE));
+}
+
+Handle<Value> bass_record_stop (const Arguments& args) {
+	HandleScope scope;
+	
+	HRECORD record = args.This()->GetInternalField(0)->Uint32Value();
+	if(!BASS_ChannelStop(record)) {
+		return scope.Close(Boolean::New(FALSE));
+	}
+	
+	return scope.Close(Boolean::New(TRUE));
+}
+
+Handle<Value> bass_record_sample (const Arguments& args) {
+	HandleScope scope;
+	HRECORD record = args.This()->GetInternalField(0)->Uint32Value();
+	
+	float fft[4096];
+	double peaks[5] = {0};
+	double tmp[5] = {0};
+	int peaki[5] = {0};
+	int i, n, k;
+	
+	BASS_ChannelGetData(record, fft, BASS_DATA_FFT8192);
+	
+	for (i = 2; i < 4095; i++) {
+		for (n = 0; n < 5; n++) {
+			if (fft[i] > peaks[n]) {
+				memmove(tmp, peaks, 5 * sizeof(double));
+				for (k = n + 1; k < 5; k++) {
+					peaks[k] = tmp[k-1];
+				}
+				
+				peaks[n] = (double) fft[i];
+				peaki[n] = i;
+				break;
+			}
+		}
+	}
+	
+	Local<Array> ret = Array::New(5);
+	
+	for (n = 0; n < 5; n++) {
+		peaks[n] = peaki[n] + 0.8721 * sin((fft[peaki[n]+1] - fft[peaki[n]-1]) / fft[peaki[n]] * 0.7632);
+		ret->Set(n, Number::New((peaks[n] * FREQ) / 8192));
+	}
+	
+	return scope.Close(ret);
+}
+
+Handle<Object> wrap_record (HRECORD record) {
+	HandleScope scope;
+	Handle<FunctionTemplate> tpl = FunctionTemplate::New();
+	Handle<ObjectTemplate> obj_tpl = tpl->InstanceTemplate();
+	obj_tpl->SetInternalFieldCount(1);
+	
+	Local<Object> obj = obj_tpl->NewInstance();
+	obj->SetInternalField(0, Uint32::New(record));
+	
+	obj->Set(
+		String::NewSymbol("start")
+		, FunctionTemplate::New(bass_record_start)->GetFunction()
+	);
+	
+	obj->Set(
+		String::NewSymbol("stop")
+		, FunctionTemplate::New(bass_record_stop)->GetFunction()
+	);
+	
+	obj->Set(
+		String::NewSymbol("sample")
+		, FunctionTemplate::New(bass_record_sample)->GetFunction()
+	);
+	
+	return scope.Close(obj);
 }
 
 Handle<Object> wrap_stream (HSTREAM stream) {
@@ -132,6 +222,25 @@ Handle<Value> bass_stream_create_file (const Arguments& args) {
 	return wrap_stream(stream);
 }
 
+Handle<Value> bass_record_init (const Arguments& args) {
+	HandleScope scope;
+	
+	if (!BASS_RecordInit(1)) {
+		return scope.Close(Boolean::New(FALSE));
+	}
+	
+	HRECORD record = BASS_RecordStart(FREQ, 1, BASS_SAMPLE_FLOAT, NULL, 0);
+	if (!record) {
+		return scope.Close(Boolean::New(FALSE));
+	}
+	
+	/*if(!BASS_ChannelStop(record)) {
+		return scope.Close(Boolean::New(FALSE));
+	}*/
+	
+	return wrap_record(record);
+}
+
 void init (Handle<Object> target) {
 	target->Set(
 		String::NewSymbol("init")
@@ -151,6 +260,11 @@ void init (Handle<Object> target) {
 	target->Set(
 		String::NewSymbol("error")
 		, FunctionTemplate::New(bass_error)->GetFunction()
+	);
+	
+	target->Set(
+		String::NewSymbol("record_init")
+		, FunctionTemplate::New(bass_record_init)->GetFunction()
 	);
 }
 

@@ -3,7 +3,7 @@ ARFLAGS = 'rcs'
 CCFLAGS = ['-g']
 CCFLAGS_MACBUNDLE = ['-fPIC']
 CCFLAGS_NODE = ['-D_LARGEFILE_SOURCE', '-D_FILE_OFFSET_BITS=64']
-CC_VERSION = ('4', '6', '2')
+CC_VERSION = ('4', '6', '3')
 COMPILER_CXX = 'g++'
 CPP = '/usr/bin/cpp'
 CPPFLAGS_NODE = ['-D_GNU_SOURCE']

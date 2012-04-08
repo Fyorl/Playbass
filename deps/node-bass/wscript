@@ -15,6 +15,7 @@ def configure(conf):
 	conf.check(lib='bass', libpath=[libbasspath], uselib_store='BASS')
 
 def build(bld):
+	bld.env.append_value('LINKFLAGS', '-lm')
 	obj = bld.new_task_gen('cxx', 'shlib', 'node_addon')
 	obj.includes = '../node-v0.6.10/src ../bass'
 	obj.cxxflags = ['-Wall', '-Werror']
