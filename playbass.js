@@ -6,6 +6,7 @@ var ncurses = require('./deps/node_modules/ncurses');
 var FileSelector = require('./lib/FileSelector.js');
 var TabWriter = require('./lib/TabWriter.js');
 var Tuner = require('./lib/Tuner.js');
+var Volumiser = require('./lib/Volumiser.js');
 
 // Node libraries
 var util = require('util');
@@ -49,6 +50,7 @@ function main () {
 	var stdwin = new ncurses.Window();
 	var selector = new FileSelector.Selector();
 	var tuner = new Tuner.Tuner();
+	var volumiser = new Volumiser.Volumiser();
 	var stream;
 	var tab = null;
 	var interval = null;
@@ -157,9 +159,13 @@ function main () {
 			, TICK_INTERVAL
 		);
 	});
-	
-	tuner.on('tuned', function () {
+
+	volumiser.on('done', function (threshold) {
 		selector.select('Choose a song', 'assets/songs', stdwin);
+	});
+	
+	tuner.on('tuned', function (record) {
+		volumiser.init(stdwin, record, TICK_INTERVAL);
 	});
 	
 	tuner.init(stdwin, TICK_INTERVAL, NOTES, FIFTH);

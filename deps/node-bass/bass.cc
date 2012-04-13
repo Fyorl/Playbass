@@ -58,12 +58,14 @@ Handle<Value> bass_stream_time (const Arguments& args) {
 
 Handle<Value> bass_record_start (const Arguments& args) {
 	HandleScope scope;
-	
-	HRECORD record = args.This()->GetInternalField(0)->Uint32Value();
-	if(!BASS_ChannelPlay(record, TRUE)) {
+
+	HRECORD record;
+	//HRECORD record = args.This()->GetInternalField(0)->Uint32Value();
+	if(!(record = BASS_RecordStart(FREQ, 1, BASS_SAMPLE_FLOAT, NULL, 0))) {
 		return scope.Close(Boolean::New(FALSE));
 	}
-	
+
+	args.This()->SetInternalField(0, Uint32::New(record));
 	return scope.Close(Boolean::New(TRUE));
 }
 
@@ -105,7 +107,12 @@ Handle<Value> bass_record_sample (const Arguments& args) {
 		}
 	}
 	
-	Local<Array> ret = Array::New(5);
+	Local<Array> ret = Array::New();
+
+	ret->Set(
+		String::NewSymbol("volume")
+		, Number::New(peaks[0])
+	);
 	
 	for (n = 0; n < 5; n++) {
 		peaks[n] = peaki[n] + 0.8721 * sin((fft[peaki[n]+1] - fft[peaki[n]-1]) / fft[peaki[n]] * 0.7632);
