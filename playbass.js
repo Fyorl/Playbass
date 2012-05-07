@@ -4,6 +4,7 @@ var ncurses = require('./deps/node_modules/ncurses');
 
 // Native javascript libraries
 var FileSelector = require('./lib/FileSelector.js');
+var Notes = require('./lib/Notes.js');
 var TabWriter = require('./lib/TabWriter.js');
 var Tuner = require('./lib/Tuner.js');
 var Volumiser = require('./lib/Volumiser.js');
@@ -15,9 +16,11 @@ var fs = require('fs');
 var TICK_INTERVAL = 50;
 var FFW_INTERVAL = 1000;
 var current_tick = 0;
+var FACTOR = 100000;
 
 var NOTES = JSON.parse(fs.readFileSync('assets/notes.json', 'utf8'));
 var FIFTH = JSON.parse(fs.readFileSync('assets/fifths.json', 'utf8'));
+var NOTE_ORDER = JSON.parse(fs.readFileSync('assets/order.json', 'utf8'));
 
 process.on('uncaughtException', function (err) {
 	ncurses.cleanup();
@@ -55,6 +58,12 @@ function main () {
 	var tab = null;
 	var interval = null;
 	var state = 0;
+	var notes;
+	var notes_seen = 0;
+	var notes_hit = 0;
+	var volume = 0;
+	var rec;
+	var pending = [];
 	
 	BASS.init();
 	
@@ -62,6 +71,8 @@ function main () {
 		// Decrease the tick by 1 for syncing purposes
 		state = 0;
 		stream.pause();
+		rec.stop();
+		notes.clear();
 		clearInterval(interval);
 	};
 	
@@ -73,6 +84,7 @@ function main () {
 		state = 1;
 		stream.sync(current_tick * TICK_INTERVAL);
 		stream.play();
+		rec.start();
 		main_loop();
 		interval = setInterval(main_loop, TICK_INTERVAL);
 	};
@@ -94,6 +106,10 @@ function main () {
 		stream.sync(current_tick * TICK_INTERVAL);
 		tab.reset(current_tick, TICK_INTERVAL);
 		update_times();
+
+		notes_seen = 0;
+		notes_hit = 0;
+		update_note_counter();
 	};
 	
 	var key_handler = function (ch, code) {
@@ -133,26 +149,79 @@ function main () {
 			break;
 		}
 	};
+
+	var get_note = function (string, fret) {
+		return NOTE_ORDER[0][(NOTE_ORDER[1][string] + fret) % 12];
+	};
 	
 	var update_times = function () {
 		stdwin.print(6, 0, ' tick time: ' + ms_to_time(current_tick * TICK_INTERVAL));
 		stdwin.print(7, 0, ' BASS time: ' + ms_to_time(stream.time() * 1000));
+	};
+
+	var check_played = function (note) {
+		notes.check();
+		stdwin.cursor(10, 0);
+		stdwin.clrtoeol();
+		stdwin.print(10, 1, notes.playing + ' (' + notes.samples.volume * FACTOR + ') <' + note + '> ' + notes.top[0] + ' ' + notes.top[1]);
 		stdwin.refresh();
+		return (
+			notes.playing
+			&& (notes.top[0] === note || notes.top[1] === note)
+		)
 	};
 	
 	var main_loop = function () {
+		while (pending.length > 0) {
+			if (check_played(pending[0].note)) {
+				notes_hit++;
+				notes_seen++;
+				pending.shift();
+				continue;
+			}
+			
+			if (pending[0].ticks > 2) {
+				notes_seen++;
+				pending.shift();
+			} else {
+				break;
+			}
+		}
+
+		for (var i = 0; i < pending.length; i++) {
+			pending[i].ticks++;
+		}
+		
 		tab.write(current_tick, TICK_INTERVAL);
 		current_tick++;
 		update_times();
+		update_note_counter();
+		stdwin.refresh();
+	};
+
+	var update_note_counter = function () {
+		stdwin.cursor(8, 0);
+		stdwin.clrtoeol();
+		stdwin.print(8, 0, ' ' + notes_hit + '/' + notes_seen + ' [' + ((notes_seen > 0) ? (notes_hit / notes_seen * 100).toFixed(2) : '0.00') + '%]');
+	};
+
+	var note_start = function (string, fret) {
+		pending.push({
+			note: get_note(string, fret)
+			, ticks: 0
+		});
 	};
 	
 	selector.on('selected', function (fname) {
 		stream = BASS.load_file('assets/songs/' + fname);
 		tab = new TabWriter.Writer(stdwin);
+		notes = Notes.init(rec, NOTES, FIFTH, volume, FACTOR);
 		
 		tab.on('initialised', function () {
 			stdwin.on('inputChar', key_handler);
 		});
+
+		tab.on('note', note_start);
 		
 		tab.initialise(
 			fname.substring(0, fname.lastIndexOf('.'))
@@ -161,11 +230,13 @@ function main () {
 	});
 
 	volumiser.on('done', function (threshold) {
+		volume = threshold;
 		selector.select('Choose a song', 'assets/songs', stdwin);
 	});
 	
 	tuner.on('tuned', function (record) {
-		volumiser.init(stdwin, record, TICK_INTERVAL);
+		rec = record;
+		volumiser.init(stdwin, record, TICK_INTERVAL, FACTOR);
 	});
 	
 	tuner.init(stdwin, TICK_INTERVAL, NOTES, FIFTH);
